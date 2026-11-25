@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Complete Auth System - DOM, Events & LocalStorage</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background-color: #eef2f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .app-container {
+      background: #ffffff;
+      width: 100%;
+      max-width: 380px;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    .tabs {
+      display: flex;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #eee;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 10px;
+      background: none;
+      border: none;
+      font-size: 16px;
+      font-weight: 600;
+      color: #777;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .tab-btn.active {
+      color: #007bff;
+      border-bottom: 2px solid #007bff;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+      color: #555;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #007bff;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 12px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 5px;
+    }
+
+    .submit-btn:hover {
+      background-color: #0056b3;
+    }
+
+    .logout-btn {
+      background-color: #dc3545;
+      margin-top: 20px;
+    }
+
+    .logout-btn:hover {
+      background-color: #b02a37;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    #statusMessage {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 6px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .dashboard-info {
+      text-align: center;
+      color: #444;
+      line-height: 1.6;
+    }
+
+    .test-hint {
+      margin-top: 20px;
+      padding-top: 15px;
+      border-top: 1px dashed #ccc;
+      font-size: 12px;
+      color: #666;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- Navigation Tabs -->
+    <div id="authTabs" class="tabs">
+      <button id="loginTabBtn" class="tab-btn active" type="button">Login</button>
+      <button id="registerTabBtn" class="tab-btn" type="button">Register</button>
+    </div>
+
+    <!-- LOGIN SECTION -->
+    <section id="loginSection">
+      <h2>Login</h2>
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="loginEmail">Email Address</label>
+          <input type="email" id="loginEmail" placeholder="Enter your email" required>
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Password</label>
+          <input type="password" id="loginPassword" placeholder="Enter your password" required>
+        </div>
+        <button type="submit" class="submit-btn">Login</button>
+      </form>
+    </section>
+
+    <!-- REGISTER SECTION -->
+    <section id="registerSection" class="hidden">
+      <h2>Create Account</h2>
+      <form id="registerForm">
+        <div class="form-group">
+          <label for="regName">Full Name</label>
+          <input type="text" id="regName" placeholder="Enter your name" required>
+        </div>
+        <div class="form-group">
+          <label for="regEmail">Email Address</label>
+          <input type="email" id="regEmail" placeholder="Enter your email" required>
+        </div>
+        <div class="form-group">
+          <label for="regPassword">Password</label>
+          <input type="password" id="regPassword" placeholder="Create a password" required>
+        </div>
+        <button type="submit" class="submit-btn">Save User</button>
+      </form>
+    </section>
+
+    <!-- DASHBOARD SECTION (Shown after successful login) -->
+    <section id="dashboardSection" class="hidden">
+      <h2>Welcome!</h2>
+      <div class="dashboard-info">
+        <p id="welcomeText"></p>
+        <p>Your session is active.</p>
+      </div>
+      <button id="logoutBtn" type="button" class="submit-btn logout-btn">Logout</button>
+    </section>
+
+    <!-- STATUS MESSAGE BOX -->
+    <div id="statusMessage" class="hidden"></div>
+
+    <!-- DEFAULT CREDENTIALS HINT -->
+    <div id="testHint" class="test-hint">
+      Default User: <strong>user@example.com</strong> | Pass: <strong>123456</strong>
+    </div>
+  </div>
+
+  <script>
+    // ==========================================
+    // 1. INITIALIZE DEFAULT DATA IN LOCALSTORAGE
+    // ==========================================
+    function initializeStorage() {
+      if (!localStorage.getItem('registeredUsers')) {
+        const defaultUsers = [
+          {
+            name: 'Default User',
+            email: 'user@example.com',
+            password: '123456'
+          }
+        ];
+        localStorage.setItem('registeredUsers', JSON.stringify(defaultUsers));
+      }
+    }
+
+    // ==========================================
+    // 2. SELECT ALL DOM ELEMENTS
+    // ==========================================
+    const authTabs = document.getElementById('authTabs');
+    const loginTabBtn = document.getElementById('loginTabBtn');
+    const registerTabBtn = document.getElementById('registerTabBtn');
+
+    const loginSection = document.getElementById('loginSection');
+    const registerSection = document.getElementById('registerSection');
+    const dashboardSection = document.getElementById('dashboardSection');
+
+    const loginForm = document.getElementById('loginForm');
+    const registerForm = document.getElementById('registerForm');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    const statusMessage = document.getElementById('statusMessage');
+    const welcomeText = document.getElementById('welcomeText');
+    const testHint = document.getElementById('testHint');
+
+    // ==========================================
+    // 3. HELPER FUNCTIONS FOR DOM UPDATES
+    // ==========================================
+    function showMessage(text, type) {
+      statusMessage.textContent = text;
+      statusMessage.className = ''; // Reset classes
+      statusMessage.classList.add(type); // 'success' or 'error'
+    }
+
+    function clearMessage() {
+      statusMessage.textContent = '';
+      statusMessage.className = 'hidden';
+    }
+
+    function switchTab(tab) {
+      clearMessage();
+      if (tab === 'login') {
+        loginTabBtn.classList.add('active');
+        registerTabBtn.classList.remove('active');
+        loginSection.classList.remove('hidden');
+        registerSection.classList.add('hidden');
+      } else {
+        registerTabBtn.classList.add('active');
+        loginTabBtn.classList.remove('active');
+        registerSection.classList.remove('hidden');
+        loginSection.classList.add('hidden');
+      }
+    }
+
+    // ==========================================
+    // 4. EVENT LISTENERS (CLICKS & SUBMISSIONS)
+    // ==========================================
+
+    // Tab switching events
+    loginTabBtn.addEventListener('click', () => switchTab('login'));
+    registerTabBtn.addEventListener('click', () => switchTab('register'));
+
+    // Register Form Submit Event
+    registerForm.addEventListener('submit', function (event) {
+      event.preventDefault();
+
+      const name = document.getElementById('regName').value.trim();
+      const email = document.getElementById('regEmail').value.trim().toLowerCase();
+      const password = document.getElementById('regPassword').value;
+
+      // Get existing users array from localStorage
+      const users = JSON.parse(localStorage.getItem('registeredUsers')) || [];
+
+      // Check if email already exists
+      const userExists = users.some((user) => user.email === email);
+      if (userExists) {
+        showMessage('Email already registered! Please login.', 'error');
+        return;
+      }
+
+      // Add new user and save back to localStorage
+      users.push({ name, email, password });
+      localStorage.setItem('registeredUsers', JSON.stringify(users));
+
+      registerForm.reset();
+      switchTab('login');
+      showMessage('Registration successful! Please login now.', 'success');
+    });
+
+    // Login Form Submit Event
+    loginForm.addEventListener('submit', function (event) {
+      event.preventDefault();
+
+      const enteredEmail = document.getElementById('loginEmail').value.trim().toLowerCase();
+      const enteredPassword = document.getElementById('loginPassword').value;
+
+      // Retrieve saved users from localStorage
+      const users = JSON.parse(localStorage.getItem('registeredUsers')) || [];
+
+      // Check email and password against saved users
+      const validUser = users.find(
+        (user) => user.email === enteredEmail && user.password === enteredPassword
+      );
+
+      if (validUser) {
+        showMessage('login successfull', 'success');
+
+        // Show Dashboard after short delay so user sees the success message
+        setTimeout(() => {
+          authTabs.classList.add('hidden');
+          loginSection.classList.add('hidden');
+          testHint.classList.add('hidden');
+          dashboardSection.classList.remove('hidden');
+          welcomeText.textContent = `Logged in as: ${validUser.name} (${validUser.email})`;
+        }, 800);
+      } else {
+        showMessage('invalid email or password', 'error');
+      }
+    });
+
+    // Logout Button Click Event
+    logoutBtn.addEventListener('click', function () {
+      loginForm.reset();
+      dashboardSection.classList.add('hidden');
+      authTabs.classList.remove('hidden');
+      testHint.classList.remove('hidden');
+      switchTab('login');
+      showMessage('Logged out successfully.', 'success');
+    });
+
+    // Run initialization when page loads
+    initializeStorage();
+  </script>
+
+</body>
+</html>
